@@ -1,0 +1,74 @@
+# Bundle patch for dsh-telegram — the Telegram overlay and the `telegram`
+# agent tool, mounted as one host row.
+#
+# The host half (index.js) connects a GramJS TelegramClient over the official
+# MTProto protocol and exposes:
+#   - the loopback JSON API under /api/dsh-telegram/*  (status, dialogs,
+#     messages, send, read, search, profile, login/qr/*, login/phone/start,
+#     login/verify, login/state, logout),
+#   - the agent tool `telegram` (read dialogs/history/search + send text only).
+# The browser half (package.json -> dsh.client) paints the paper-plane overlay:
+# QR sign-in (primary), phone + code + 2FA fallback, dialog list, thread,
+# composer and profile.
+#
+# Maintenance: keep exactly one row below. Removing the row (or the link:
+# dependency in the profile) and restarting the host unmounts the plugin.
+#
+# Telegram credentials — fill in your own values.
+# Create apiId/apiHash at https://my.telegram.org/apps (logged in with the
+# Telegram account this overlay should use), then either edit the values below or,
+# better, keep this shipped file untouched and put your values in the profile's
+# own patch layer, which has higher priority than this bundle patch and survives
+# plugin upgrades, for example in ~/.dsh/profiles/<profile>/cordis.patch.yml:
+#
+#   - id: telegram
+#     config:
+#       apiId: 1234567
+#       apiHashRef: TELEGRAM_API_HASH
+#       proxyMode: socks5
+#       proxyHost: 127.0.0.1
+#       proxyPort: 1081
+#
+# apiHash is a secret: prefer apiHashRef, which names a stored credential record
+# instead of a literal value in a YAML file. The login session (StringSession) is
+# never stored here — the plugin keeps it as its own credential record.
+#
+# Network: direct TCP to the Telegram data centres is blocked on many machines.
+# Start a local SOCKS5 "watchman" and point the plugin at it, either through the
+# fields below or through the environment (read at activation):
+#
+#   DSH_TELEGRAM_PROXY=socks5://127.0.0.1:1081
+#   DSH_TELEGRAM_PROXY=mtproxy://host:443?secret=<secret>
+#
+# A non-direct `proxyMode` always wins over the environment. A dead proxy is
+# reported as `connection_failed` with secret-free diagnostics.
+#
+# Every field has a default in the plugin's Config schema, so a row with no
+# config at all still mounts; it reports the "not configured" state (apiId 0).
+- insert:
+    - id: telegram
+      name: 'dsh-telegram'
+      config:
+        # Your apiId from https://my.telegram.org/apps. 0 means "not configured".
+        apiId: 0
+        # Your apiHash from the same page. Keep it empty when you use apiHashRef.
+        apiHash: ''
+        # Name of a credential record that holds the apiHash; wins over apiHash.
+        apiHashRef: ''
+        # Optional prefill of the phone number in the fallback sign-in form, E.164.
+        defaultPhone: ''
+        # Proxy: 'direct' | 'socks5' | 'mtproxy'. A non-direct mode wins over
+        # DSH_TELEGRAM_PROXY.
+        proxyMode: direct
+        proxyHost: 127.0.0.1
+        proxyPort: 1081
+        # SOCKS5 user name, when the proxy needs one. Never logged.
+        proxyUser: ''
+        # Credential references (not the secrets themselves).
+        proxyPasswordRef: ''
+        proxySecretRef: ''
+        # TCP preflight budget and SOCKS/MTProxy handshake timeout.
+        proxyPreflightMs: 1500
+        proxyTimeoutSec: 8
+        # Sign-in attempt TTL; a fresh QR token refreshes it.
+        authTimeoutMs: 180000

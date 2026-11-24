@@ -1,0 +1,76 @@
+{
+  "name": "dsh-telegram",
+  "version": "0.2.0",
+  "type": "module",
+  "main": "index.js",
+  "description": "Telegram client inside DeepSeek Harness: a paper-plane overlay with official MTProto (GramJS), QR or phone sign-in, dialog list, message thread, composer, profile and the `telegram` agent tool.",
+  "license": "MIT",
+  "author": "dadgrand <dadgrand@users.noreply.github.com>",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "telegram",
+    "mtproto",
+    "gramjs",
+    "web-ui",
+    "overlay",
+    "qr-login",
+    "agent-tool"
+  ],
+  "engines": {
+    "node": ">=24",
+    "dsh": ">=0.2.2-rc.3"
+  },
+  "dependencies": {
+    "qrcode-generator": "2.0.4",
+    "telegram": "2.26.22"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "*",
+    "@deepseek-ai/dsh-tools": "*"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "lib/client.js",
+    "lib/client-src/*.js",
+    "lib/host/*.js",
+    "lib/host/**/*.js",
+    "scripts/build-client.mjs",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "docs",
+    "icon.svg",
+    "README.md",
+    "LICENSE",
+    "scripts/check-package.mjs",
+    "locale/en.json",
+    "locale/ru.json"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": []
+    }
+  }
+}
