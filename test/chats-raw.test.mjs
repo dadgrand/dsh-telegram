@@ -17,6 +17,7 @@ import test from 'node:test'
 
 import { mapRawDialogPage } from '../lib/host/telegram/chats.js'
 import { ok } from '../lib/host/telegram/errors.js'
+import { mapMessage } from '../lib/host/telegram/messages.js'
 import { createTelegramTool } from '../lib/host/tool.js'
 
 const channelDialog = {
@@ -145,4 +146,51 @@ test('whoami tool value is a Result so the dispatcher exposes result, not undefi
   // anything and must not contain undefined.
   const round = JSON.parse(JSON.stringify(value))
   assert.deepEqual(round, value)
+})
+
+test('mapMessage survives the GramJS file.width getter TypeError for document media', () => {
+  // telegram@2.26.22 File._fromAttr receives an array for width/height/duration
+  // and evaluates `attr instanceof <array>`: every Document-based media throws.
+  // The mapper must not touch those getters.
+  const message = {
+    id: 1,
+    date: 100,
+    message: 'clip',
+    document: {
+      className: 'Document',
+      mimeType: 'video/mp4',
+      size: 1000,
+      attributes: [{ className: 'DocumentAttributeVideo', w: 1280, h: 720, duration: 12 }],
+    },
+    get file() {
+      throw new TypeError("Right-hand side of 'instanceof' is not callable")
+    },
+  }
+  const dto = mapMessage(message)
+  assert.equal(dto.media.kind, 'document')
+  assert.equal(dto.media.width, 1280)
+  assert.equal(dto.media.height, 720)
+  assert.equal(dto.media.durationSec, 12)
+  assert.equal(dto.media.mimeType, 'video/mp4')
+  assert.equal(dto.media.sizeBytes, 1000)
+})
+
+test('mapMessage reads photo dimensions from the largest size without engine getters', () => {
+  const message = {
+    id: 2,
+    date: 101,
+    message: '',
+    photo: {
+      className: 'Photo',
+      sizes: [
+        { className: 'PhotoSize', w: 90, h: 60 },
+        { className: 'PhotoSizeProgressive', w: 320, h: 240 },
+      ],
+    },
+  }
+  const dto = mapMessage(message)
+  assert.equal(dto.media.kind, 'photo')
+  assert.equal(dto.media.width, 320)
+  assert.equal(dto.media.height, 240)
+  assert.equal(dto.media.mimeType, 'image/jpeg')
 })

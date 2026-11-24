@@ -4,6 +4,21 @@ All notable changes to this plugin are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] — 2026-11-25
+
+Dialog list crash fix on accounts with media messages.
+
+### Fixed
+
+- A dialog whose last message carries Document media (video, document, voice,
+  sticker, GIF, audio) no longer fails the whole dialog page with
+  `TypeError: Right-hand side of 'instanceof' is not callable`. GramJS 2.26.22
+  passes an array of attribute classes to `File._fromAttr`, so its
+  `file.width`/`height`/`duration` getters throw; the mapper now reads
+  width/height/duration from `photo.sizes`/`document.attributes` directly and
+  treats every engine getter as fallible. This was the live cause of
+  `GET /dialogs?limit>=16` returning 500 and the panel showing a failure.
+
 ## [0.2.2] — 2026-11-25
 
 Field fixes found on a real signed-in account.
