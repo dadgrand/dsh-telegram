@@ -1,5 +1,7 @@
 # dsh-telegram
 
+English | [Русский](README.ru.md)
+
 Telegram inside [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): a paper-plane button in the top-right corner of the Web GUI opens a full Telegram overlay — official MTProto through [GramJS](https://github.com/gram-js/gramjs), QR sign-in first, dialog list, message thread, composer and profiles. Selecting any object or dragging a region inside the overlay opens a comment window that sends your prompt to the **active DSH session**, together with the selected objects.
 
 The same plugin gives the agent one tool, `telegram`, for reading dialogs and history, searching, sending text and marking read.
@@ -91,7 +93,7 @@ Every field has a default, so a row without `config` still mounts and reports `n
 | `apiId` | integer `0…2147483647` | `0` | API id from my.telegram.org; `0` = not configured |
 | `apiHash` | string | `''` | API hash (secret); empty = not configured |
 | `apiHashRef` | string | `''` | Name of a stored credential holding the hash; **wins over `apiHash`** |
-| `defaultPhone` | string | `''` | Prefill for the fallback sign-in form; never sent on its own, never returned by `/status` |
+| `defaultPhone` | string | `''` | Number the Host substitutes when the fallback form is submitted empty; never returned by `/status` and never placed in the page |
 | `connectionTimeoutMs` | integer | `20000` | Upper bound of one connection attempt |
 | `dialogLimit` / `messageLimit` / `searchLimit` | integer | `30` / `25` / `10` | Per-request ceilings |
 | `textMaxLength` | integer | `4096` | Outgoing text ceiling |
@@ -102,10 +104,10 @@ Every field has a default, so a row without `config` still mounts and reports `n
 | `proxyUser` | string | `''` | SOCKS5 user name (never logged) |
 | `proxyPasswordRef` / `proxySecretRef` | string | `''` | Credential names for the SOCKS5 password / MTProxy secret |
 | `proxyTimeoutSec` / `proxyPreflightMs` | integer | `8` / `1500` | Handshake timeout, TCP preflight budget |
-| `selectionMaxObjects` | integer | `12` | Host clamp of selected objects per prompt |
-| `selectionTextPerObject` | integer | `500` | Host clamp of characters per object |
-| `promptMaxChars` | integer | `6000` | Host clamp of the whole prompt |
-| `noteMaxChars` | integer | `2000` | Host clamp of your comment |
+| `selectionMaxObjects` | integer | `12` | Advertised prompt limit (read from `/status`; see the prompt section — the prompt is bounded in the browser, not on the Host) |
+| `selectionTextPerObject` | integer | `500` | Advertised per-object text limit (not enforced on the Host) |
+| `promptMaxChars` | integer | `6000` | Advertised prompt budget (not enforced on the Host) |
+| `noteMaxChars` | integer | `2000` | Advertised comment budget (not enforced on the Host) |
 | `sendMode` | `queue` \| `steer` | `queue` | Default delivery mode for the prompt |
 
 `apiHash` is a secret. Prefer `apiHashRef`: DSH resolves the name through its credential store (a saved key or the profile environment variable `TELEGRAM_API_HASH`) and the value never appears in configuration. Note that this plugin's schema is validated but has no Settings form — configuration is edited in the patch layer only (or through the proxy environment variable below).
@@ -115,7 +117,7 @@ Every field has a default, so a row without `config` still mounts and reports `n
 Open the overlay: the sign-in screen shows a QR code.
 
 1. **QR (primary).** Telegram on your phone → Settings → Devices → Link Desktop Device, then scan. The code refreshes about every 30 seconds; `Refresh code now` requests a new one immediately. The window counts down to expiry.
-2. **Phone fallback.** `Sign in with a phone number` reveals phone → code → two-step password (2FA, with the hint Telegram provides). `defaultPhone`, when configured, prefills the field.
+2. **Phone fallback.** `Sign in with a phone number` reveals phone → code → two-step password (2FA, with the hint Telegram provides). `defaultPhone`, when configured, is used **by the Host** if you submit the form empty: the field itself stays empty and the number never reaches the browser. The overlay only shows whether such a number exists (`/status` reports `phoneConfigured`).
 3. An attempt lives 3 minutes (`authTimeoutMs`); each fresh QR token extends it. Letting it expire returns you to `idle`.
 
 The sign-in session (a GramJS `StringSession`) is stored as the DSH credential record `dsh-telegram/session` in `$DSH_HOME/.credentials.yaml` — never in the plugin config, never in `localStorage`, never in a log line. The overlay and `/status` only ever show a masked number (`+7 9** ** **12`). `Sign out` deletes the local record and destroys the client; revoking the session on Telegram's side is done from your phone.
@@ -160,7 +162,9 @@ Selection is an explicit mode so ordinary browsing is never intercepted.
 
 Where the prompt goes: the **active DSH session** — the session the Conversation last opened, identified by its main-view retention. The window always names the target; with no active session it offers `Open in a new session` (creates a session in the current workspace and puts the prompt in the composer) and `Copy`.
 
-The prompt is built deterministically: a short human digest first (`Telegram: N objects selected …`), your comment verbatim, then a fenced JSON block (`"schema": "dsh-telegram/selection@1"`) with the selected objects. Telegram content is treated as untrusted data: the block is fenced with four backticks and the prompt carries an explicit note that it is data, not instructions. Only allow-listed fields are serialized — phone numbers, API credentials, the session string and QR tokens can never reach a prompt. Budgets: 12 objects and 500 characters per object on the Host (the client keeps up to 50 chips and says so when it drops some), 6000 characters for the whole prompt, 2000 for your comment; truncation is always marked.
+The prompt is built deterministically: a short human digest first (`Telegram: N objects selected …`), then your comment, then a fenced JSON block (`"schema": "dsh-telegram/selection@1"`) with the selected objects. Telegram content is treated as untrusted data: the block is fenced with four backticks and the prompt carries an explicit note that it is data, not instructions. Only allow-listed fields are serialized — phone numbers, API credentials, the session string and QR tokens can never reach a prompt.
+
+Your comment is inserted **escaped, not verbatim**: control characters and bidi marks are dropped, tabs become spaces, and HTML and Markdown are neutralized so a pasted fragment cannot restructure the prompt. The budget is enforced in the browser, not on the Host: up to 50 selected objects (the chip bar marks what it drops), 500 characters of text per object, 6000 characters for the finished prompt, 2000 for your comment, with every truncation marked. The `selection*` / `promptMaxChars` / `noteMaxChars` values in Config are the defaults the overlay reads from `/status`; the Host receives finished text and does not clamp it again.
 
 ## The `telegram` agent tool
 
@@ -200,14 +204,14 @@ Responses are `{ "ok": true, "action": … , "result": … }` or `{ "ok": false,
 
 ## What is in the package
 
-`index.js` (Host entry), `lib/host/**` (engine, operations, routes, agent tool, proxy, QR matrix), `lib/client-src/*.js` + `scripts/build-client.mjs` (the browser bundle and its generator), `lib/client.js` (generated artifact — do not edit by hand), `cordis.patch.yml` (one insert row), `locale/en.json`, `locale/ru.json`, `icon.svg`, `docs/DETAIL.md`, `test/**`, `LICENSE`.
+`index.js` (Host entry), `lib/host/**` (engine, operations, routes, agent tool, proxy, QR matrix), `lib/client-src/*.js` + `scripts/build-client.mjs` (the browser bundle and its generator), `lib/client.js` (generated artifact — do not edit by hand), `cordis.patch.yml` (one insert row), `locale/en.json`, `locale/ru.json`, `icon.svg`, `docs/DETAIL.md`, `test/**`, `README.md`, `README.ru.md`, `CHANGELOG.md`, `LICENSE`.
 
 ## Known limitations
 
 - **Host modals cover the launcher.** The overlay lives in the frame (`shell.overlay`, z-index 20); DSH modals render in `document.body` at z-index 1000/1100. While the first-run notice, the Preview Notice or Settings is open, it intercepts clicks on the paper-plane — dismiss it (`Continue`, `Got it`, `×`), then press the button or `Alt+Shift+T`. Raising the plugin above modals would require a portal out of the frame, which breaks the embedding contract.
 - **The backdrop is inert while the comment window is open.** Clicking outside does not close the overlay in that state by design (the comment window is modal to the overlay until it is sent, discarded or cancelled), so use `Cancel`, `×` or `Escape`.
 - **Message and profile selection are pointer-only.** Dialog rows expose `aria-pressed` and are operable from the keyboard, but message rows and profile cards have no keyboard toggle yet; use a dialog-row selection or the region marquee instead.
-- **Client cap 50 vs Host default 12.** The overlay keeps up to 50 chips and marks dropped ones; the Host clamps the prompt to `selectionMaxObjects` (default 12). Raise the Host value if you need more.
+- **The prompt budget is client-side.** The overlay keeps up to 50 chips and marks what it drops; the 12-object default in Config is only advertised through `/status` today and is not enforced host-side, so a prompt is bounded by the browser limits (50 objects, 500 characters per object, 6000 total) rather than by the Config value.
 - **No live updates.** The dialog list and the open thread are polled (≈15 s and ≈4 s while the overlay is open and the document is visible). Push updates would need an upgrade route and are not implemented.
 - **Text only.** No media download, upload, stickers, polls, location, calls or secret chats; attachments are metadata only. No editing, forwarding, pinning or deleting messages.
 - **Not official Telegram Desktop.** The engine is `telegram@2.26.22`, which npm marks as archived (development continues in the `teleproto` fork); the version is pinned deliberately and the engine is isolated behind `lib/host/telegram/client.js`.
@@ -221,7 +225,7 @@ npm install --omit=dev --ignore-scripts
 node --check index.js
 node scripts/build-client.mjs      # lib/client-src -> lib/client.js, deterministic
 node scripts/check-package.mjs     # manifest, exports, files, locales, icon
-node --test test/                  # 43 tests, no network, no account
+node --test test/                  # 48 tests, no network, no account
 ```
 
 `lib/client.js` is generated; the CI workflow rebuilds it and fails when the committed bundle differs from its sources.

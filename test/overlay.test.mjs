@@ -24,6 +24,11 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const BUNDLE = path.join(ROOT, 'lib', 'client.js')
 const SRC = path.join(ROOT, 'lib', 'client-src')
 const NS = 'dsh-telegram'
+// The generated footer of lib/client.js. A preview load swaps it for a variant
+// that also returns the component scope, so a test can render a screen that the
+// registration keeps private (R18). The artifact itself is unchanged.
+const EXPORTS_ANCHOR = "return { inject: ['slots', 'locale', 'sessions'], apply: applyClientModule }"
+const EXPORTS_WITH_PREVIEW = "return { inject: ['slots', 'locale', 'sessions'], apply: applyClientModule, preview: { LoginScreen: LoginScreen, OverlayRoot: OverlayRoot } }"
 
 function read(relative) {
   return readFileSync(path.join(ROOT, relative), 'utf8')
@@ -152,6 +157,17 @@ function createDocumentStub() {
 function loadBundle(options) {
   assert.ok(existsSync(BUNDLE), 'lib/client.js is missing; run node scripts/build-client.mjs first')
   const source = readFileSync(BUNDLE, 'utf8')
+  // A test may ask for the component scope the build keeps private: patching
+  // the generated footer in memory exposes it without changing the artifact.
+  const expose = options !== undefined && options !== null && options.expose === true
+  let patched = source
+  if (expose) {
+    // The footer text also appears in a fragment comment, so patch the LAST
+    // occurrence: the tail of the bundle is the factory's real return.
+    const at = source.lastIndexOf(EXPORTS_ANCHOR)
+    assert.notEqual(at, -1, 'the bundle footer no longer matches EXPORTS_ANCHOR; update the test helper')
+    patched = source.slice(0, at) + EXPORTS_WITH_PREVIEW + source.slice(at + EXPORTS_ANCHOR.length)
+  }
   const document = createDocumentStub()
   document.createElement = createElementStub
   document.querySelector = function () {
@@ -193,7 +209,7 @@ function loadBundle(options) {
     },
   }
   vm.createContext(context)
-  vm.runInContext(source, context)
+  vm.runInContext(patched, context)
   assert.ok(captured !== null, 'the bundle did not call window.__ModuleLoader__.load')
   const module = captured.factory(function require(name) {
     if (name === 'react') return React
@@ -799,4 +815,71 @@ test('en and ru cover every overlay/profile action key', () => {
     assert.notEqual(en[key], '', 'en.json has an empty ' + key)
     assert.notEqual(ru[key], '', 'ru.json has an empty ' + key)
   }
+})
+
+// R18: with an empty fallback field the Host substitutes its own configured
+// number, so the client has no number to interpolate. The notice must render
+// neutral copy instead of "Code sent to " and the screen must offer a retry
+// hint; this renders the real LoginScreen from the built bundle.
+test('R18: the code-sent notice stays truthful when the Host substituted the number', () => {
+  const loaded = loadBundle({ expose: true })
+  const fake = createContext()
+  const LoginScreen = loaded.module.preview.LoginScreen
+  assert.equal(typeof LoginScreen, 'function')
+
+  const t = function (key) {
+    return key
+  }
+  const tree = LoginScreen({
+    ctx: fake.ctx,
+    t: t,
+    lang: 'en',
+    active: true,
+    onDone: function () {},
+    state: {
+      status: 'needs_auth',
+      loginStage: 'code_sent',
+      config: { phoneConfigured: true },
+    },
+  })
+
+  const notice = findElement(tree, function (element) {
+    return element !== null && typeof element === 'object' && element.props !== undefined
+      && element.props['data-dsh-telegram'] === 'login-code-sent'
+  })
+  assert.ok(notice !== null, 'the code-sent notice is missing')
+  const children = Array.isArray(notice.props.children) ? notice.props.children : [notice.props.children]
+  assert.deepEqual(children, ['login.codeSentConfigured'], 'the notice must use the neutral copy')
+
+  // The interpolated variant must not be rendered when the number is unknown,
+  // so no blank "Code sent to " can reach the screen.
+  const flattened = JSON.stringify(tree)
+  assert.equal(flattened.includes('"login.codeSent"'), false, 'the interpolated copy rendered without a number')
+  assert.equal(flattened.includes('login.codeSent,'), false, 'the interpolated copy rendered without a number')
+})
+
+// R18: the guard and the neutral copy are part of the sources and of the
+// generated bundle, and both locales carry both keys — the rendering contract
+// above cannot regress silently.
+test('R18: the notice guard, the retry hint and the locale keys are in place', () => {
+  const login = read('lib/client-src/60-login.js')
+  assert.ok(login.includes("knownPhone === ''"), 'the notice no longer branches on an unknown number')
+  assert.ok(login.includes("t('login.codeSentConfigured')"), 'the neutral copy is not used')
+  assert.ok(login.includes("t('login.codeSent', { phone: knownPhone })"), 'the interpolated copy lost its guard')
+  assert.ok(login.includes("t('login.codeRetryHint')"), 'the retry hint is missing')
+  assert.equal(login.includes('phone: phone[0]'), false, 'the raw field still reaches the notice')
+
+  const en = JSON.parse(read('locale/en.json'))
+  const ru = JSON.parse(read('locale/ru.json'))
+  assert.equal(Object.keys(en).length, Object.keys(ru).length)
+  for (const key of ['login.codeSentConfigured', 'login.codeRetryHint']) {
+    assert.equal(typeof en[key], 'string', 'en.json is missing ' + key)
+    assert.equal(typeof ru[key], 'string', 'ru.json is missing ' + key)
+    assert.notEqual(en[key].trim(), '', 'en.json has an empty ' + key)
+    assert.notEqual(ru[key].trim(), '', 'ru.json has an empty ' + key)
+  }
+
+  const bundle = read('lib/client.js')
+  assert.ok(bundle.includes("t('login.codeSentConfigured')"), 'the built bundle lacks the neutral copy usage')
+  assert.ok(bundle.includes("t('login.codeRetryHint')"), 'the built bundle lacks the retry hint usage')
 })

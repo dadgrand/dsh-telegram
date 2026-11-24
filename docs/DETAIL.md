@@ -41,7 +41,7 @@ Selection is a mode, so ordinary browsing is never intercepted.
 4. Press **Comment** to open the comment window: chips with `×`, the comment field, the prompt preview, and `Queue` / `Interrupt and insert` while the target session is running.
 5. **Send** delivers the prompt to the active DSH session. The window names the target; with no active session it offers `Open in a new session` (new session in the current workspace, prompt placed in the composer) and `Copy`.
 
-The prompt starts with a short digest, then your comment, then a fenced JSON block with the selected objects (`"schema": "dsh-telegram/selection@1"`). Telegram content is untrusted data: the fence uses four backticks and the text says so explicitly. Only allow-listed fields are serialized — phone numbers, API credentials, the session string and QR tokens cannot appear in a prompt. Limits: 12 objects and 500 characters per object on the Host (the overlay allows up to 50 chips and marks what it drops), 6000 characters for the prompt, 2000 for the comment; truncation is always marked.
+The prompt starts with a short digest, then your comment, then a fenced JSON block with the selected objects (`"schema": "dsh-telegram/selection@1"`). Telegram content is untrusted data: the fence uses four backticks and the text says so explicitly. Only allow-listed fields are serialized — phone numbers, API credentials, the session string and QR tokens cannot appear in a prompt. The comment is escaped rather than copied verbatim (control characters and bidi marks removed, HTML and Markdown neutralized). The budget is applied in the browser: up to 50 objects, 500 characters per object, 6000 for the prompt and 2000 for the comment, with truncation marked; the Config values are the defaults advertised through `/status` and are not re-applied by the Host.
 
 ## The `telegram` agent tool
 
@@ -79,7 +79,7 @@ Proxy precedence: a non-`direct` `proxyMode`, otherwise the `DSH_TELEGRAM_PROXY`
 - Host modals (first-run notice, Preview Notice, Settings) render above the frame and therefore above the launcher; dismiss them before using the button.
 - Clicking the backdrop does not close the overlay while the comment window is open; use `Cancel`, `×` or `Escape`.
 - Message rows and profile cards are selectable with the pointer only; dialog rows also expose `aria-pressed` and keyboard activation.
-- The overlay allows 50 chips, the Host clamps prompts to 12 objects by default.
+- The prompt budget is enforced in the browser (50 objects, 500 characters per object, 6000 total); the smaller Config defaults shown in `/status` are advertised, not enforced host-side.
 - No live push: dialogs and threads are polled.
 - Text only: no media upload or download, no stickers, polls, location, calls or secret chats; attachments appear as metadata. No edit, forward, pin or delete.
 - The engine (`telegram@2.26.22`) is pinned; npm marks that release as archived and development continues in the `teleproto` fork.
@@ -89,4 +89,4 @@ Proxy precedence: a non-`direct` `proxyMode`, otherwise the `DSH_TELEGRAM_PROXY`
 
 ## Verification status
 
-The repository ships a unit suite (43 tests, no network, no account) plus static gates: `node --check` on every source and on the built bundle, a deterministic client build, a manifest/locale/exports check, and a CI workflow that rebuilds the bundle and fails when the committed artifact differs. Live behaviour (overlay geometry, selection, prompt delivery into a session, host routes) was verified against an isolated DSH instance with fixture Telegram responses; signing in to a real account is the user's step.
+The repository ships a unit suite (48 tests, no network, no account) plus static gates: `node --check` on every source and on the built bundle, a deterministic client build, a manifest/locale/exports check, and a CI workflow that rebuilds the bundle and fails when the committed artifact differs. Live behaviour (overlay geometry, selection, prompt delivery into a session, host routes) was verified against an isolated DSH instance with fixture Telegram responses; signing in to a real account is the user's step.

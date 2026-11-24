@@ -37,6 +37,8 @@
   "login.codePlaceholder": "5 digits",
   "login.codeHint": "From SMS or from the Telegram app.",
   "login.codeSent": "Code sent to {phone}",
+  "login.codeSentConfigured": "Code sent to the number configured on the Host.",
+  "login.codeRetryHint": "If no code arrived, change the number and send it again.",
   "login.verify": "Confirm code",
   "login.passwordLabel": "Two-factor password",
   "login.passwordHint": "This account uses two-step verification.",
