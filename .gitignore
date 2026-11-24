@@ -1,0 +1,21 @@
+# Dependencies and local tool output
+node_modules/
+package-lock.json
+*.log
+.DS_Store
+.env
+.env.*
+
+# Verification scratch space used by reviewers (logs, harnesses, artifacts)
+.verify/
+verification-artifacts/
+.tmp/
+
+# Internal design, implementation and verification notes: kept in the working
+# repository, not published (they quote machine-specific paths and probes).
+DESIGN.md
+DESIGN-v0.2.md
+RESEARCH-FINDINGS.md
+review-report.md
+verification-report.md
+.agent-teams/

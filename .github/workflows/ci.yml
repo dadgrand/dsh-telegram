@@ -1,0 +1,48 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: node 24 / ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # GramJS pulls optional native dependencies whose build scripts are not
+      # needed; the plugin runs without them.
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+
+      - name: Host entry syntax
+        run: node --check index.js
+
+      - name: Rebuild the browser bundle
+        run: node scripts/build-client.mjs
+
+      # The committed artifact must match its sources: a hand-edited bundle or a
+      # forgotten rebuild fails here.
+      - name: Bundle is up to date with lib/client-src
+        run: git diff --exit-code -- lib/client.js
+
+      - name: Built bundle syntax
+        run: node --check lib/client.js
+
+      - name: Package contract
+        run: node scripts/check-package.mjs
+
+      - name: Unit suite
+        run: node --test test/
