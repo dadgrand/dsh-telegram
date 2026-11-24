@@ -4,6 +4,22 @@ All notable changes to this plugin are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] — 2026-11-25
+
+Field fixes found on a real signed-in account.
+
+### Fixed
+
+- Dialog list no longer fails with `internal_error` when the account has a
+  dialog whose top message is missing, which made GramJS's custom `Dialog`
+  constructor throw for the whole page: `GET /dialogs` (and the agent tool
+  `list_chats`) now falls back to the raw `messages.getDialogs` page and maps
+  plain TL objects (`mapRawDialogPage`), so the page size is no longer capped at
+  the first odd row.
+- The `telegram` tool's `whoami` action now returns a proper `Result`; before,
+  the dispatcher read `result.value` from a plain object and the harness
+  rejected the value as non-lossless JSON.
+
 ## [0.2.1] — 2026-11-24
 
 Documentation and sign-in UX patch. No protocol, route or storage change.
