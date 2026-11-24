@@ -23,11 +23,24 @@ The plugin is a DSH **bundle**: its `package.json` declares `dsh.bundle.patch`, 
 
 ### From GitHub
 
+pnpm 11 refuses to run a dependency's install scripts without an explicit decision, and GramJS brings three transitive packages that have them (`bufferutil`, `utf-8-validate`, `es5-ext`). None of their builds is needed. Declare that once, in the profile's `pnpm-workspace.yaml` (`~/.dsh/profiles/web/pnpm-workspace.yaml`):
+
+```yaml
+allowBuilds:
+  bufferutil: false
+  utf-8-validate: false
+  es5-ext: false
+```
+
+Then install:
+
 ```sh
 dsh plugin --profile web add github:dadgrand/dsh-telegram
 ```
 
-pnpm installs the package and its two runtime dependencies (`telegram@2.26.22`, `qrcode-generator@2.0.4`) into the profile.
+pnpm installs the package and its two runtime dependencies (`telegram@2.26.22`, `qrcode-generator@2.0.4`) into the profile, and `dsh` appends `dsh-telegram` to `dsh.profile.bundles`.
+
+Without that block the first `add` stops with `ERR_PNPM_IGNORED_BUILDS`: the package is already in the profile's `package.json`, but the bundle row is not registered yet. Add the block and run the same `add` command again — it completes and appends the row. Alternatively install from a local checkout (below), which never asks pnpm for a build decision.
 
 ### From a local checkout
 

@@ -85,6 +85,7 @@ Proxy precedence: a non-`direct` `proxyMode`, otherwise the `DSH_TELEGRAM_PROXY`
 - The engine (`telegram@2.26.22`) is pinned; npm marks that release as archived and development continues in the `teleproto` fork.
 - Below 768 px the navigation drawer covers the overlay.
 - A real QR sign-in, real dialogs and a live MTProto round trip require your own API credentials and phone; they are not covered by CI.
+- Installing the bundle from GitHub with pnpm 11 needs one explicit `allowBuilds` decision for three transitive packages that carry install scripts (`bufferutil`, `utf-8-validate`, `es5-ext`); none of their builds is needed, and README spells out the exact block. Installing from a local directory avoids the question entirely.
 
 ## Verification status
 
