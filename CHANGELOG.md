@@ -4,6 +4,18 @@ All notable changes to this plugin are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] — 2026-11-25
+
+Engine `Api` resolution hardening.
+
+### Fixed
+
+- `whoami` and self/chat profiles no longer return `engine_unavailable` when
+  the ESM loader exposes the `telegram` package without its CommonJS named
+  exports: `engineApi()` falls back to `createRequire`, and a missing `Api`
+  now degrades the optional full-user/full-chat fields instead of failing the
+  whole profile screen.
+
 ## [0.2.3] — 2026-11-25
 
 Dialog list crash fix on accounts with media messages.

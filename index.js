@@ -29,7 +29,7 @@ import { createTelegramHost } from './lib/host/telegram/client.js'
 import { registerTelegramTool } from './lib/host/tool.js'
 
 /** Package version reported by `/status`; must equal `package.json.version`. */
-export const VERSION = '0.2.3'
+export const VERSION = '0.2.4'
 
 /** Canonical plugin id: the module name, the bundle row's `name` and the client module id. */
 export const name = 'dsh-telegram'
