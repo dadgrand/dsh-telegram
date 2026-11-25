@@ -4,6 +4,20 @@ All notable changes to this plugin are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] — 2026-11-25
+
+Dialog pagination and a larger page.
+
+### Added
+
+- `list_chats` (agent tool) and `GET /dialogs` accept `offset_date`, `offset_id`
+  and `offset_peer`, and return a `next` cursor `{offsetDate, offsetId,
+  offsetPeer}` taken from the last dialog in server order. The boundary row is
+  excluded, so paging through an account with hundreds of dialogs does not
+  repeat chats.
+- Page size raised to 100 for the panel and the tool ceiling; `dialogLimit` in
+  Config still clamps it per deployment.
+
 ## [0.2.4] — 2026-11-25
 
 Engine `Api` resolution hardening.

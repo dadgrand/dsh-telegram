@@ -1,6 +1,6 @@
 {
   "name": "dsh-telegram",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "type": "module",
   "main": "index.js",
   "description": "Telegram client inside DeepSeek Harness: a paper-plane overlay with official MTProto (GramJS), QR or phone sign-in, dialog list, message thread, composer, profile and the `telegram` agent tool.",
